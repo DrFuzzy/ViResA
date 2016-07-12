@@ -3,65 +3,144 @@
 """
 Created on Mon Nov  2 23:52:18 2015
 
-@author: Dr. Kyriakos M. Deliparaschos
+@author: Dr. Fuzzy
 """
 
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Function definitions
+class Metrics(object):
+    """ Class that contains all metrics """
 
-# This function computes the mRT cost 
-def mrt_cost(archive_D, archive_a, f, gamma):
-    #(N,o) = archive_D.shape
-    #(M,o) = archive_a.shape
-    N = len(archive_D)
-    M = len(archive_a)
-    
-    if M == N:
-        mrt = np.zeros([N, 1])
+    def __init__(self, time, gamma, phi, c, archive_K, archive_D, archive_a, archive_u):
+        self.time = time
+        self.gamma = gamma
+        self.phi = phi 
+        self.c = c
+        self.archive_K = archive_K
+        self.archive_D = archive_D
+        self.archive_a = archive_a
+        self.archive_u = archive_u
+        self.mrt = None
 
-        for i in range(0, N):
-            if archive_a[i] == 0:
-                g = 1000
-            else:
-                g = archive_D[i]/archive_a[i]
-    
-            if g < 0.8:
-                mrt_tmp = np.exp(gamma*(g-f))
-            else:
-                mrt_tmp = 1+gamma*(g-f)      
-
-            mrt[i] = mrt_tmp
+    def calc_metric(self, metric_name):
+        """ Calculate chosen metric. """
+#        print("%s", _metrics.keys())        
         
-        return mrt    
-    else:
-        print("What is going wrong with you?")
-        return
+        if metric_name == 'mrt':
+            # sanity check
+            if len(self.archive_D) != len(self.archive_a):
+                raise ValueError("Archives with different length: <%r>, <%r>" % (self.archive_D, self.archive_a))
+            # local names (if you care for speed, you'd better avoid attribute lookups in inner loops!)
+            gamma, phi, archive_D, archive_a = self.gamma, self.phi, self.archive_D, self.archive_a
+            self.mrt = mrt = np.zeros_like(archive_D, dtype=np.float)
+            # main algorithm
+            for i, (a, D) in enumerate(zip(archive_a, archive_D)):
+                g = D / a if a != 0 else 1000
+                k = gamma * (g - phi)
+                mrt[i] = np.exp(k) if g < 0.8 else 1 + k
+            return mrt
+        elif metric_name == 'rms':
+            return np.sqrt(np.linalg.norm(self.archive_u - self.c * self.archive_a)**2 / self.time)
+        else:
+            msg = "Not known metric '%s'!" % metric_name
+            raise ValueError(msg)            
 
-# This function plots the mRT model
-def mrt_model():
-    import matplotlib.pyplot as plt
-    # define parameters
-    archive_D = np.arange(0,1.001,0.001)    
-    u = np.arange(0,1.001,0.001)
-    archive_a = np.ones(len(archive_D))
-    x = np.arange(0,1.01,0.01)
-    f = 0.8
-    gamma = 10
-    
-    # call function
-    mrt = mrt_cost(archive_D, archive_a, f, gamma)
-    
-    # plot
-    plt.plot(u, mrt, linewidth=1.2)
-    plt.xlabel('CPU Demand/CPU allocation', fontsize=12)
-    plt.ylabel('mRT (s)', fontsize=12)
-    # dotted region    
-    plt.plot(u[0:800], np.ones(800), 'k--')
-    plt.plot(0.8*np.ones(101), x, 'k--')
+    def plot_metric(self, metric_name, x_label = None, y_label = None, marker = None, line_width = None):
+        """ Plot chosen metric. """
+        _metrics = {
+        'mrt': {'val': [self.mrt], 'xlabel': 'time interval', 'ylabel': 'mRT (s)', 'marker': ['b'], 'linewidth': 1.5},
+        'cpu': {'val': [self.archive_a, self.archive_u], 'xlabel': 'time interval', 'ylabel': 'CPU (%)', 'marker': ['b', 'k'], 'linewidth': 1.5}, 
+        'gain': {'val': [self.archive_K], 'xlabel': 'time interval', 'ylabel': 'gain', 'marker': ['b'], 'linewidth': 1.5}
+        };
+        
+        if x_label is None:
+            x_label = _metrics[metric_name]['xlabel']
+        if y_label is None:
+            y_label = _metrics[metric_name]['ylabel']
+        if marker is None:
+            marker = _metrics[metric_name]['marker']
+        if line_width is None:
+            line_width = _metrics[metric_name]['linewidth']            
+        
+        plot_val = _metrics[metric_name]['val']
 
-    return
-    
-# Test
-#x = mrt_cost( array([1,2,3,4]).T,array([5,6,7,8]).T,1,1 )
-#mrt_model()
+        if metric_name is 'mrt' and self.mrt is None:
+            msg = "mRT cost has not been calculated. Call <calc_mrt_cost()> and try again!"
+            raise ValueError(msg)
+        
+        if metric_name is 'cpu' and len(marker) is not 2:
+            msg = "<plot_metric()> for '%s' requires exactly 2 markers (%d defined)!" % (metric_name, len(marker))
+            raise ValueError(msg)
+
+        for count in range(0,len(plot_val)):
+            plt.plot(plot_val[count], marker[count], linewidth=line_width)
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        #plt.box(on=True)
+        plt.show() # force plot now and then return to main code
+
+#    def calc_mrt_cost(self):
+#        """ Calculate the mRT cost """
+#        # sanity check
+#        if len(self.archive_D) != len(self.archive_a):
+#            raise ValueError("Archives with different length: <%r>, <%r>" % (archive_D, archive_a))
+#        # local names (if you care for speed, you'd better avoid attribute lookups in inner loops!)
+#        gamma, phi, archive_D, archive_a = self.gamma, self.phi, self.archive_D, self.archive_a
+#        self.mrt = mrt = np.zeros_like(archive_D, dtype=np.float)
+#        # main algorithm
+#        # XXX I don't like how I named the variables here, but I don't know the topic so
+#        # I can't come up with better ones!
+#        for i, (a, D) in enumerate(zip(archive_a, archive_D)):
+#            g = D / a if a != 0 else 1000
+#            k = gamma * (g - phi)
+#            mrt[i] = np.exp(k) if g < 0.8 else 1 + k
+#        return mrt
+#
+#    def calc_rms_error(self):
+#        """ Return RMS error. """
+#        return np.sqrt(np.linalg.norm(self.archive_u - self.c * self.archive_a)**2 / self.time)
+
+#    def plot_mrt(self):
+#        """ Plot the mRT cost. """
+#        if self.mrt is None:
+#            msg = "mRT cost has not been calculated. Call <calc_mrt_cost()> and try again!"
+#            raise ValueError(msg)
+#        plt.plot(self.mrt, '-b', linewidth=1.5)
+#        plt.xlabel('time interval')
+#        plt.ylabel('mRT (s)')
+#        #plt.box(on=True)
+#        plt.show() # force plot now and then return to main code
+#
+#    @staticmethod
+#    def plot_cpu(archive_a, archive_u):
+#        """ Plot the CPU (%) allocation. """
+#        plt.plot(archive_a, '-b', linewidth=1.5)
+#        plt.plot(archive_u, 'k', linewidth=1.5)
+#        plt.xlabel('time interval')
+#        plt.ylabel('CPU (%)')
+#        #set(gca,'FontSize',14);
+#        #plt.box(on=True)
+#        plt.show() # force plot now and then return to main code
+#
+#    @staticmethod
+#    def plot_gain(archive_K):
+#        """ Plot the gain. """
+#        plt.xlabel('time interval')
+#        plt.ylabel('gain')
+#        plt.plot(archive_K, '-b*')
+#        #set(gca,'FontSize',12);
+#        #plt.box(on=True)
+#        plt.show() # force plot now and then return to main code
+      
+#x = metrics.calc_mrt_cost(np.array(range(8)).T, np.array(range(8, 16)).T)
+#metrics.plot_mrt()
+#metrics = Metrics(100, 10, 0.8, 0.95, np.array(range(10)).T, np.array(range(8)).T, np.array(range(8)).T, np.array(range(8)).T)
+#x = metrics.calc_metric('mrt') # compute mRT cost
+#metrics.plot_metric('mrt', 'time interval', 'mRT (s)', None, 1) # plot mRT cost
+#metrics.plot_metric(metric_name = 'cpu', x_label = 'time interval', y_label = 'CPU (%)', marker = ['go', 'r'], line_width = 1) # plot gain
+#metrics.plot_metric('gain', 'time interval', 'Gain', ['g--'], 1) # plot gain

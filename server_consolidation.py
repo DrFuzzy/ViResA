@@ -11,8 +11,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import operation
-import estimators
-import metrics
+from estimators import Estimators
+from metrics import Metrics
 
 """
  This function studies the performance of various methods for state
@@ -57,16 +57,16 @@ while ans:
         R = 1
         Q = 4
         c = 0.95
-        # set the initial required demand (D) and initialize CPU usage (u)
-        D = 60
-        u = D
-        # set the initial allocation (a)
-        a = 100
+        D = 60 # set the initial required demand (D) and initialize CPU usage (u)
+        u = D 
+        a = 100 # set the initial allocation (a)
         # define archives
         archive_K = np.zeros((time, np.size(a)))
         archive_a = np.zeros((time, np.size(a)))
         archive_u = np.zeros((time, np.size(u)))
         archive_D = np.zeros((time, np.size(D)))
+
+        estimators = Estimators(Q, R, c)
 
     elif ans == '2' or ans == '4' or ans == '7' or ans == '8':
         # not implemented yet!
@@ -90,12 +90,12 @@ while ans:
             obs[t] = y # save current observed utilization
 
             # Kalman SISO
-            (a,P,K) = estimators.kalman_siso(P, Q, R, c, y, a)
+            (a, P, K) = estimators.kalman_siso(a, P, y)
         
             a_out[t] = a # save predicted allocation
 
             # find the current CPU usage:
-            (u,q) = operation.current_cpu_usage(ans, D, a, u)
+            (u, q) = operation.current_cpu_usage(ans, D, a, u)
 
             # archives
             archive_a[t] = a
@@ -132,12 +132,12 @@ while ans:
             obs[t] = y # save current observed utilization
 
             # Hinf SISO            
-            (a,P,K) = estimators.hinf_siso(P, Q, R, c, y, a)
+            (a, P, K) = estimators.hinf_siso(a, P, y)
         
             a_out[t] = a # save predicted allocation
 
             # find the current CPU usage:
-            (u,q) = operation.current_cpu_usage(ans, D, a, u)
+            (u, q) = operation.current_cpu_usage(ans, D, a, u)
 
             # archives
             archive_a[t] = a
@@ -166,8 +166,8 @@ while ans:
             # with is more safe to open file
             with open(path) as fh: 
                 # do something with fh
-                obs = np.zeros((time, np.size(a)))
-                a_out = np.zeros((time, np.size(a)))
+                #obs = np.zeros((time, np.size(a)))
+                #a_out = np.zeros((time, np.size(a)))
        
                 # estimate ANFIS parameters based on Kalman training data         
                 anf = estimators.anfis_train(path)
@@ -213,8 +213,8 @@ while ans:
             # with is more safe to open file
             with open(path) as fh: 
                 # do something with fh
-                obs = np.zeros((time, np.size(a)))
-                a_out = np.zeros((time, np.size(a)))
+                #obs = np.zeros((time, np.size(a)))
+                #a_out = np.zeros((time, np.size(a)))
        
                 # estimate ANFIS parameters based on Kalman training data         
                 anf = estimators.anfis_train(path)
@@ -260,68 +260,29 @@ while ans:
 
 
     # PLOTS and METRICS
+    metrics = Metrics(time, gamma, phi, c, archive_K, archive_D, archive_a, archive_u)        
+
     if ans == '1':
-        plt.figure(1)
-        #set(gca,'FontSize',14);
-        plt.plot(archive_a, '-b', linewidth=1.5)
-        plt.plot(archive_u,'k', linewidth=1.5)
-        plt.xlabel('time interval')
-        plt.ylabel('CPU (%)')
-        #plt.box(on=True)
-
-        plt.figure(2)
-        #set(gca,'FontSize',14);
-        cost_kalman = metrics.mrt_cost(archive_D, archive_a, phi, gamma)
-        plt.plot(cost_kalman,'-b', linewidth=1.5)
-        plt.xlabel('time interval')
-        plt.ylabel('mRT (s)')
-        #plt.box(on=True)
-
-        plt.figure(3)
-        plt.xlabel('time interval')
-        plt.ylabel('gain')
-        #set(gca,'FontSize',12);
-        plt.plot(archive_K,'-b*')
-        #plt.box(on=True)
-
-        plt.show() # force plot now and then return to main code
-
-        RMS_kalman = np.sqrt(np.linalg.norm(archive_u-c*archive_a)**2/time)
-        print('Kalman RMS estimation error ='), RMS_kalman
+        #metrics.plot_cpu(archive_a, archive_u) # plot CPU (%) allocation     
+        metrics.plot_metric(metric_name = 'cpu', x_label = 'time interval', y_label = 'CPU (%)', marker = ['go', 'r'], line_width = 1) # plot gain
+        cost_kalman = metrics.calc_metric('mrt') # compute mRT cost
+        #metrics.plot_mrt() # plot mRT cost
+        metrics.plot_metric('mrt', 'time interval', 'mRT (s)', None, 1) # plot mRT cost
+        #metrics.plot_gain(archive_K) # plot gain
+        metrics.plot_metric('gain', 'time interval', 'Gain', ['g--'], 1) # plot gain
+        print('Kalman RMS estimation error ='), metrics.calc_metric('rms')
         print('Kalman mRT ='), np.mean(cost_kalman)
-
+        
     elif ans == '2':
         # reserved        
         pass
     
     elif ans == '3':
-        plt.figure(1)
-        #set(gca,'FontSize',14);
-        plt.plot(archive_a, '-b', linewidth=1.5)
-        plt.plot(archive_u,'k', linewidth=1.5)
-        plt.xlabel('time interval')
-        plt.ylabel('CPU (%)')
-        #plt.box(on=True)
-
-        plt.figure(2)
-        #set(gca,'FontSize',14);
-        cost_hinf = metrics.mrt_cost(archive_D, archive_a, phi, gamma)
-        plt.plot(cost_hinf,'-b', linewidth=1.5)
-        plt.xlabel('time interval')
-        plt.ylabel('mRT (s)')
-        #plt.box(on=True)
-
-        plt.figure(3)
-        plt.xlabel('time interval')
-        plt.ylabel('gain')
-        #set(gca,'FontSize',12);
-        plt.plot(archive_K,'-b*')
-        #plt.box(on=True)
-
-        plt.show() # force plot now and then return to main code
-
-        RMS_hinf = np.sqrt(np.linalg.norm(archive_u-c*archive_a)**2/time)
-        print('Hinf RMS estimation error ='), RMS_hinf
+        metrics.plot_metric("cpu", "time interval", "CPU (%)", '-r', 1) # plot gain
+        cost_hinf = metrics.calc_metric('mrt') # compute mRT cost
+        metrics.plot_metric("mrt", "time interval", "mRT (s)", None, 1) # plot mRT cost
+        metrics.plot_metric("gain", "time interval", "Gain", '-g', 1) # plot gain
+        print('Hinf RMS estimation error ='), metrics.calc_metric('rms')
         print('Hinf mRT ='), np.mean(cost_hinf)
 
     elif ans == '4':
@@ -329,49 +290,17 @@ while ans:
         pass
 
     elif ans == '5':
-        plt.figure(1)
-        #set(gca,'FontSize',14);
-        plt.plot(archive_a, '-b', linewidth=1.5)
-        plt.plot(archive_u,'k', linewidth=1.5)
-        plt.xlabel('time interval')
-        plt.ylabel('CPU (%)')
-        #plt.box(on=True)
-
-        plt.figure(2)
-        #set(gca,'FontSize',14);
-        cost_fuzzykalman = metrics.mrt_cost(archive_D, archive_a, phi, gamma)
-        plt.plot(cost_fuzzykalman,'-b', linewidth=1.5)
-        plt.xlabel('time interval')
-        plt.ylabel('mRT (s)')
-        #plt.box(on=True)
-        
-        plt.show() # force plot now and then return to main code
-
-        RMS_fuzzykalman = np.sqrt(np.linalg.norm(archive_u-c*archive_a)**2/time)
-        print('Fuzzy Kalman RMS estimation error ='), RMS_fuzzykalman
+        metrics.plot_metric("cpu", "time interval", "CPU (%)", '-r', 1) # plot gain
+        cost_fuzzykalman = metrics.calc_metric('mrt') # compute mRT cost
+        metrics.plot_metric("mrt", "time interval", "mRT (s)", None, 1) # plot mRT cost
+        print('Fuzzy Kalman RMS estimation error ='), metrics.calc_metric('rms')
         print('Fuzzy Kalman mRT ='), np.mean(cost_fuzzykalman)
     
     elif ans == '6':
-        plt.figure(1)
-        #set(gca,'FontSize',14);
-        plt.plot(archive_a, '-b', linewidth=1.5)
-        plt.plot(archive_u,'k', linewidth=1.5)
-        plt.xlabel('time interval')
-        plt.ylabel('CPU (%)')
-        #plt.box(on=True)
-
-        plt.figure(2)
-        #set(gca,'FontSize',14);
-        cost_fuzzyhinf = metrics.mrt_cost(archive_D, archive_a, phi, gamma)
-        plt.plot(cost_fuzzyhinf,'-b', linewidth=1.5)
-        plt.xlabel('time interval')
-        plt.ylabel('mRT (s)')
-        #plt.box(on=True)
-        
-        plt.show() # force plot now and then return to main code
-
-        RMS_fuzzyhinf = np.sqrt(np.linalg.norm(archive_u-c*archive_a)**2/time)
-        print('Fuzzy Hinf RMS estimation error ='), RMS_fuzzyhinf
+        metrics.plot_metric("cpu", "time interval", "CPU (%)", '-r', 1) # plot gain
+        cost_fuzzyhinf = metrics.calc_metric('mrt') # compute mRT cost
+        metrics.plot_metric("mrt", "time interval", "mRT (s)", None, 1) # plot mRT cost
+        print('Fuzzy Hinf RMS estimation error ='), metrics.calc_metric('rms')
         print('Fuzzy Hinf mRT ='), np.mean(cost_fuzzyhinf)
     
     elif ans == '7':
