@@ -7,11 +7,10 @@ Created on Tue Nov  3 17:31:55 2015
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-#import skfuzzy.membership as mf
-from skfuzzy import gaussmf, gbellmf, sigmf
+#import matplotlib.pyplot as plt
+#import skfuzzy.membership as membership
+#from skfuzzy import gaussmf, gbellmf, sigmf
 import anfis
-import membership
 
 # Function definitions
 
@@ -62,9 +61,9 @@ def anfis_train(path):
     #mf = [[['gaussmf',{'mean':25.,'sigma':10.}],['gaussmf',{'mean':40.,'sigma':10.}],['gaussmf',{'mean':55.,'sigma':10.}], ['gaussmf',{'mean':70.,'sigma':10.}], ['gaussmf',{'mean':90.,'sigma':10.}]]]
     mf = [[['gbellmf',{'a':9.7417,'b':2., 'c':22.9247}],['gbellmf',{'a':9.7417,'b':2., 'c':42.4081}],['gbellmf',{'a':9.7417,'b':2., 'c':61.8915}],['gbellmf',{'a':9.7417,'b':2., 'c':81.3749}], ['gbellmf',{'a':9.7417,'b':2., 'c':100.8583}]]]
 
-    mfc = membership.membershipfunction.MemFuncs(mf)
+    mfc = anfis.membershipfunction.MemFuncs(mf)
     #global anf
-    anf = anfis.ANFIS(X, Y, mfc)
+    anf = anfis.anfis.ANFIS(X, Y, mfc)
     anf.trainHybridJangOffLine(epochs=20)
 #    print round(anf.consequents[-1][0],6)
 #    print round(anf.consequents[-2][0],6)
@@ -80,7 +79,7 @@ def anfis_train(path):
 
 # This function evaluates the ANFIS
 def anfis_siso(u, ANFIS_obj):
-   
+  
     """    
     Layer 1: Fuzzify Input / Output     
     """       
@@ -88,13 +87,13 @@ def anfis_siso(u, ANFIS_obj):
     mu = np.empty(len(ANFIS_obj.memFuncs[0]))
       
     for mf in range(len(ANFIS_obj.memFuncs[0])):
-        mu[mf] = gbellmf(u,**ANFIS_obj.memClass.MFList[0][mf][1])
+        mu[mf] = anfis.membershipfunction.gbellmf(u,**ANFIS_obj.memClass.MFList[0][mf][1])
             
 #    # Plot input Fuzzy Sets across the Universe of Discourse
 #    U = np.arange(min(X),max(X),1)
 #    FS = np.empty([len(U),len(anf.memFuncs[0])])    
 #    for mf in range(len(anf.memFuncs[0])):
-#        FS[:,mf] = gbellmf(U,**anf.memClass.MFList[0][mf][1])        
+#        FS[:,mf] = anfis.membershipfunction.gbellmf(U,**anf.memClass.MFList[0][mf][1])        
 #    plt.plot(U,FS)    
     """
     Layer 2:
