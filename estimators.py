@@ -6,10 +6,11 @@ Created on Tue Nov  3 17:31:55 2015
 @author: Dr. Kyriakos M. Deliparaschos
 """
 
-import anfis
-import membership
-from skfuzzy import gbellmf #, gaussmf, sigmf
 import numpy as np
+#import matplotlib.pyplot as plt
+#import skfuzzy.membership as membership
+#from skfuzzy import gaussmf, gbellmf, sigmf
+import anfis
 
 # import skfuzzy.membership as mf
 class Estimators(object):
@@ -73,9 +74,9 @@ class Estimators(object):
         mf = [[['gbellmf', {'a': 9.7417, 'b': 2., 'c': 22.9247}], ['gbellmf', {'a': 9.7417, 'b': 2., 'c': 42.4081}], ['gbellmf', {
             'a': 9.7417, 'b': 2., 'c': 61.8915}], ['gbellmf', {'a': 9.7417, 'b': 2., 'c': 81.3749}], ['gbellmf', {'a': 9.7417, 'b': 2., 'c': 100.8583}]]]
 
-        mfc = membership.membershipfunction.MemFuncs(mf)
+        mfc = anfis.membershipfunction.MemFuncs(mf)
         # global anf
-        anf = anfis.ANFIS(X, Y, mfc)
+        anf = anfis.anfis.ANFIS(X, Y, mfc)
         anf.trainHybridJangOffLine(epochs=20)
         #print round(anf.consequents[-1][0],6)
         #print round(anf.consequents[-2][0],6)
@@ -96,7 +97,7 @@ class Estimators(object):
         mu = np.empty(len(ANFIS_obj.memFuncs[0])) # Input Membership Functions
 
         for mf in range(len(ANFIS_obj.memFuncs[0])):
-            mu[mf] = gbellmf(u, **ANFIS_obj.memClass.MFList[0][mf][1])
+            mu[mf] = anfis.membershipfunction.gbellmf(u, **ANFIS_obj.memClass.MFList[0][mf][1])
             #    # Plot input Fuzzy Sets across the Universe of Discourse
             #    U = np.arange(min(X),max(X),1)
             #    FS = np.empty([len(U),len(anf.memFuncs[0])])    
