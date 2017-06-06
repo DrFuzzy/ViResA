@@ -12,7 +12,7 @@ import numpy as np
 #from skfuzzy import gaussmf, gbellmf, sigmf
 import anfis
 
-# Function definitions
+# Function definitions 
 
 # This function evaluates the SISO Kalman filter 
 def kalman_siso(P, Q, R, c, u, ap):
@@ -23,12 +23,58 @@ def kalman_siso(P, Q, R, c, u, ap):
 
     if a > 100:
         a = 100
-    elif a < 0:
-        a = 0
+    elif a < 1:
+        a = 1
     elif a < u:
         a = u
     
     return (a, P, K)
+
+# This function evaluates the MCC Kalman filter MIMO
+def mcc_kf_mimo(P, Q, R, H, y, x):
+    # Prior estimation
+    x_n = F.dot(x)
+    P_n = F.dot(P).dot(F.T) + Q
+    
+    # Posterior estimation
+    R_inv = np.linalg.pinv(R)
+    P_p  = P_n
+    r = y - H.dot(x) # innovation term
+    r_norm = np.sqrt(r.T.dot(R_inv).dot(r))
+    sigma = 1 * r_norm
+    L = np.exp(-(r_norm**2) / (2*sigma**2))
+    K = np.linalg.pinv( np.linalg.pinv(P_p)+ L*H.T.dot(R_inv).dot(H) ).dot(L*H.T.dot(R_inv))
+    x_n = x_n + K.dot(r)
+    P_n  = (np.eye(len(x)) - K.dot(B)).dot(P_p).dot((np.eye(len(x)) - K.dot(B)).T) + K.dot(R).dot(K.T)
+
+    return (x,P,K)
+
+# This function evaluates the MCC Kalman filter SISO
+def mcc_kf_siso(P, Q, R, H, y, x):
+    # Prior estimation
+    F=1
+    x_n = F*x
+    P_n = F*P + Q
+    
+    # Posterior estimation
+    R_inv = R
+    P_p  = P_n
+    r = y - H*x # innovation term
+    r_norm = np.sqrt(r*R_inv*r)
+    sigma = 1 * r_norm
+    L = np.exp(-(r_norm**2) / (2*sigma**2))
+    K = 1/( (1/P_p) + L*H*R_inv*H ) * (L*H*R_inv)
+    x_n = x_n + K*r
+    P_n  = (1 - K*H)*P_p*(1 - K*H) + K*R*K
+
+    if x_n > 100:
+        x_n = 100
+    elif x_n < 0:
+        x_n = 0
+    elif x_n < y:
+        x_n = y
+
+    return (x_n,P_n,K)
 
 # This function evaluates the Hinf filter 
 def hinf_siso(P, Q, R, c, u, ap):
