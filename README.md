@@ -2,10 +2,11 @@
 
 ## Prerequisites (for real-data workloads) ##
 Server Side:
-- Install Xen Hypervisor on each physical machine (Web server, Database)
+- Install Xen Hypervisor on each physical machine (web server, database server)
 - Create DomUs-VMs to host the server applications (Apache, MySQL)
 - Set the domain names and IP addresses of the DomUs in server_consolidation.py
-- Copy ViResA folder to the root directory of Dom0 for each physical machine
+- Setup a physical machine (remote server) and create ssh connections with the other server physical machines (web server, database server)
+- Copy viresa folder to the root directory of Dom0 on each physical machine (VM1, VM2) and to the remote server
 
 Client Side:
 - Copy  RUBiS (Client-Side) folder to the root directory
@@ -30,7 +31,7 @@ The ViResA (Virtualized [server] Resource Allocation) project studies the perfor
   - Configure IP addresses, workload scenarios in /RUBiS/Client/rubis.properties
   - Copy initialize.sh to the root directory
 
-- Login to Dom0, move to ViResA folder and run server_consolidation.py in terminal
+- Login to the remote server, go to the viresa directory and run server_consolidation.py in terminal
 
 ## Who do I talk to? ##
 * Dr. Kyriakos Deliparaschos: k.deliparaschos@cut.ac.cy
