@@ -19,19 +19,17 @@ def variance(N,data,y,obs):
     QN = np.var(obs)
   return QN,obs
 
-def covariance(N,data,y,obs1,obs2):
+def covariance(N,data,y,sw1,sw2): # sw: sliding window
   QN = 0.0
-  y1 = y[0]
-  y2 = y[1]
   if data > N:
-    obs1 = obs1[1:] + [y1]
-    obs2 = obs2[1:] + [y2]
-    QN = np.cov(obs1,obs2, ddof=1)
+    sw1 = sw1[1:] + [y[0]]
+    sw2 = sw2[1:] + [y[1]]
+    QN = np.cov(sw1,sw2, ddof=1)
   else:
-    obs1.append(y1)
-    obs2.append(y2)
-    QN = np.cov(obs1,obs2, bias=1)
-  return QN,obs1,obs2
+    sw1.append(y[0])
+    sw2.append(y[1])
+    QN = np.cov(sw1,sw2, bias=1)
+  return QN,sw1,sw2
 
 
 
