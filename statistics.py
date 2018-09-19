@@ -9,29 +9,29 @@ Created on Tue Aug  10 10:36:14 2017
 import numpy as np
 import math
 
-def variance(N,data,y,obs):
+def variance(N, data, y_new, y_old, sw): # sw: sliding window
   QN = 0.0
+  z = y_new - y_old
   if data > N:
-    obs = obs[1:] + [y]
-    QN = np.var(obs)
+    sw = sw[1:] + [z]
+    QN = np.var(sw)
   else:
-    obs.append(y)
-    QN = np.var(obs)
-  return QN,obs
+    sw.append(z)
+    QN = np.var(sw)
+  return QN, sw
 
-def covariance(N,data,y,obs1,obs2):
+def covariance(N, data, y_new, y_old, sw_web, sw_db): # sw: sliding window
   QN = 0.0
-  y1 = y[0]
-  y2 = y[1]
+  z = np.subtract(y_new,y_old)
   if data > N:
-    obs1 = obs1[1:] + [y1]
-    obs2 = obs2[1:] + [y2]
-    QN = np.cov(obs1,obs2, ddof=1)
+    sw_web = sw_web[1:] + [z[0]]
+    sw_db = sw_db[1:] + [z[1]]
+    QN = np.cov(sw_web, sw_db, ddof=1)
   else:
-    obs1.append(y1)
-    obs2.append(y2)
-    QN = np.cov(obs1,obs2, bias=1)
-  return QN,obs1,obs2
+    sw_web.append(z[0])
+    sw_db.append(z[1])
+    QN = np.cov(sw_web, sw_db, bias=1)
+  return QN, sw_web, sw_db
 
 
 
