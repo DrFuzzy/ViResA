@@ -26,6 +26,17 @@ import numpy as np
 # This function evaluates the MIMO Kalman filter
 def kalman_mimo(P, W, V, C, y, x):
     A = np.array([[1, 0],[0, 1]])  # process equation
+    # Measurement Update (Correction)
+    # ===============================
+    # Compute the Kalman Gain
+    S = C.dot(P).dot(C) + V
+    K = C.dot(P).dot(np.linalg.pinv(S))
+    # Update the state estimate
+    r = y - C.dot(x)  # innovation term (measurement residual)
+    x = x + K.dot(r)
+    # Update the error covariance
+    P = np.eye(len(x)) - C.dot(K).dot(P)
+
     # Time Update (Prediction)
     # ========================
     # Project the state ahead
@@ -33,19 +44,6 @@ def kalman_mimo(P, W, V, C, y, x):
     # Project the error covariance ahead
     P = A.dot(P) + W
 
-    # Measurement Update (Correction)
-    # ===============================
-    # Compute the Kalman Gain
-    S = C.dot(P).dot(C) + V
-    K = C.dot(P).dot(np.linalg.pinv(S))
-
-    # Update the state estimate
-    r = y - C.dot(x)  # innovation term (measurement residual)
-    x = x + K.dot(r)
-
-    # Update the error covariance
-    P = np.eye(len(x)) - C.dot(K).dot(P)
-    
     return x, P, K
     
 
@@ -57,16 +55,17 @@ def hinf_mimo(P, W, V, C, y, x, theta):
     A_tr = np.transpose(A)
     I = np.eye(len(x))
 
-    # Predict
-    x_new = A.dot(x)
-    P_new = A.dot(P).dot(A_tr) + W
-
     # Update
-    L = np.linalg.pinv(I - theta*P_new + C_tr.dot(V_inv).dot(C).dot(P_new))
-    K = P_new.dot(L).dot(C_tr).dot(V_inv)
-    r = y - C.dot(x_new)  # innovation term (measurement residual)
-    x = x_new + K.dot(r)
-    P = P_new.dot(L)
+    innov = y - C.dot(x)
+    L = (I-theta.dot(P)+C_tr.dot(V_inv).dot(C).dot(P))
+    L_inv = np.linalg.pinv(L)
+    K = P.dot(L_inv).dot(C_tr).dot(V_inv)
+    x = x + K.dot(innov)
+    P = P.dot(L_inv)
+
+    # Predict
+    x = A.dot(x)
+    P= A.dot(P).dot(A_tr) + W
 
     return x, P, K
 
@@ -77,22 +76,20 @@ def mcc_kf_mimo(P, W, V, C, y, x, sigma):
     A_tr = np.transpose(A)
     C_tr = np.transpose(C)
     V_inv = np.linalg.pinv(V)
-    I = np.eye(len(x))
-
-    # Prior estimation (Prediction)
-    x_new = A.dot(x)
-    P_new = A.dot(P).dot(A_tr) + W
-
-    # Posterior estimation (Update)
-    P_inv = np.linalg.pinv(P_new)
-    r = y - C.dot(x_new) # innovation term (measurement residual)
-    r_norm = np.sqrt(r.dot(V_inv).dot(r))
-    dom = x_new - A.dot(x_new)
-    dom_norm = np.sqrt(dom.dot(P_inv).dot(dom))
-
-    L = (np.exp(-(r_norm ** 2) / (2 * sigma ** 2)))
+    n = len(x)
+    I = np.eye(n)
+    
+    P_inv = np.linalg.pinv(P)
+    innov = y - C.dot(x)
+    innov_tr = np.transpose(innov)
+    norm_innov = np.sqrt(innov_tr.dot(V_inv).dot(innov))
+    L = np.exp(-(norm_innov ** 2) / (2 * sigma ** 2))
     K = np.linalg.pinv(P_inv + (L*C_tr).dot(V_inv).dot(C)).dot(L*C_tr).dot(V_inv)
-    x_n = x_new + K.dot(r)
-    P_n = (I - K.dot(C)).dot(P_new).dot(np.transpose(I - K.dot(C))) + K.dot(V).dot(np.transpose(K))
+    x = x + K.dot(innov)
+    K_tr = np.transpose(K)
+    P = (I - K.dot(C)).dot(P).dot(np.transpose(I - K.dot(C))) + (K.dot(V).dot(K_tr))
 
-    return x_n, P_n, K
+    x = A.dot(x)
+    P = A.dot(P).dot(A_tr) + W
+
+    return x, P, K
